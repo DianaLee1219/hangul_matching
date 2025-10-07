@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangul Matching Cards</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #main-screen, #quiz-screen {
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+        button {
+            font-size: 20px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #letter {
+            font-size: 100px;
+            margin: 20px;
+        }
+        .option {
+            font-size: 30px;
+            padding: 15px;
+            margin: 10px;
+            background-color: #ddd;
+            cursor: pointer;
+            width: 80%;
+            max-width: 200px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        #message {
+            font-size: 24px;
+            margin: 20px;
+        }
+        #timer {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+        #score {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+        #back-button {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 16px;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        @media (max-width: 600px) {
+            #letter {
+                font-size: 60px;
+            }
+            .option {
+                font-size: 24px;
+                padding: 10px;
+            }
+            #message, #timer, #score {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="main-screen">
+        <h1>Hangul Learning App</h1>
+        <button onclick="startQuiz('consonants')">Consonants</button>
+        <button onclick="startQuiz('vowels')">Vowels</button>
+    </div>
+    <div id="quiz-screen" class="hidden">
+        <button id="back-button" onclick="goBack()">Back</button>
+        <div id="letter"></div>
+        <div id="options"></div>
+        <div id="message"></div>
+        <div id="timer"></div>
+        <div id="score"></div>
+    </div>
+
+    <script>
+        const consonants = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+        const conPronuns = ['g', 'n', 't', 'r', 'm', 'b', 's', '-', 'j', 'ch', 'k', 't', 'p', 'h'];
+        const vowels = ['ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ', 'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ'];
+        const vowPronuns = ['a', 'ya', 'eo', 'yeo', 'o', 'yo', 'u', 'yu', 'eu', 'i'];
+
+        let currentType = '';
+        let currentLetter = '';
+        let currentCorrect = '';
+        let attempts = 0;
+        let timerInterval;
+        let timeLeft = 30;
+        let correctCount = 0;
+        let totalAttempts = 0;
+
+        function startQuiz(type) {
+            currentType = type;
+            document.getElementById('main-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            resetScore();
+            nextQuestion();
+        }
+
+        function goBack() {
+            stopTimer();
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('main-screen').classList.remove('hidden');
+            document.getElementById('message').textContent = '';
+            document.getElementById('letter').textContent = '';
+            document.getElementById('options').innerHTML = '';
+            resetScore();
+        }
+
+        function resetScore() {
+            correctCount = 0;
+            totalAttempts = 0;
+            updateScore();
+        }
+
+        function updateScore() {
+            const percentage = totalAttempts > 0 ? (correctCount / totalAttempts * 100).toFixed(2) : 0;
+            document.getElementById('score').textContent = `Score: ${correctCount}/${totalAttempts} (${percentage}%)`;
+        }
+
+        function nextQuestion() {
+            attempts = 0;
+            timeLeft = 30;
+            updateTimer();
+            startTimer();
+
+            const list = currentType === 'consonants' ? consonants : vowels;
+            const pronuns = currentType === 'consonants' ? conPronuns : vowPronuns;
+
+            const index = Math.floor(Math.random() * list.length);
+            currentLetter = list[index];
+            currentCorrect = pronuns[index];
+
+            document.getElementById('letter').textContent = currentLetter;
+            document.getElementById('message').textContent = '';
+
+            // Generate options: correct + 2 random wrong
+            const options = [currentCorrect];
+            while (options.length < 3) {
+                const randIndex = Math.floor(Math.random() * pronuns.length);
+                const randPron = pronuns[randIndex];
+                if (!options.includes(randPron)) {
+                    options.push(randPron);
+                }
+            }
+
+            // Shuffle options
+            options.sort(() => Math.random() - 0.5);
+
+            const optionsDiv = document.getElementById('options');
+            optionsDiv.innerHTML = '';
+            options.forEach(opt => {
+                const optDiv = document.createElement('div');
+                optDiv.classList.add('option');
+                optDiv.textContent = opt;
+                optDiv.onclick = () => handleAnswer(opt);
+                optionsDiv.appendChild(optDiv);
+            });
+
+            updateScore();
+        }
+
+        function handleAnswer(selected) {
+            attempts++;
+            totalAttempts++;
+            if (selected === currentCorrect) {
+                correctCount++;
+                document.getElementById('message').textContent = 'Great!';
+                stopTimer();
+                updateScore();
+                setTimeout(nextQuestion, 2000);
+            } else {
+                document.getElementById('message').textContent = 'Try again!';
+                updateScore();
+                if (attempts >= 2) {
+                    stopTimer();
+                    setTimeout(nextQuestion, 2000);
+                }
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    totalAttempts++;
+                    stopTimer();
+                    document.getElementById('message').textContent = "Time's up!";
+                    updateScore();
+                    setTimeout(nextQuestion, 2000);
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function updateTimer() {
+            document.getElementById('timer').textContent = `Time left: ${timeLeft} seconds`;
+        }
+    </script>
+</body>
+</html>
